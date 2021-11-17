@@ -23,6 +23,9 @@ import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
+import android.view.TextureView;
+import android.view.View;
+import android.widget.Button;
 
 import java.util.Arrays;
 
@@ -36,6 +39,10 @@ public class MainActivity extends AppCompatActivity {
 
     private final int CAMERA1   = 0;
     private final int CAMERA2   = 1;
+    private Button mButtonOpenCamera1 = null;
+    private Button mButtonOpenCamera2 = null;
+    private Button mButtonToMakeShot = null;
+    private TextureView mImageView = null;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -44,6 +51,11 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mCameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+
+        mButtonOpenCamera1 = findViewById(R.id.buttonCamFront);
+        mButtonOpenCamera2 = findViewById(R.id.buttonCamBack);
+        mButtonToMakeShot = findViewById(R.id.buttonShot);
+        mImageView = findViewById(R.id.mImageView);
 
         try {
             //Получение списка камер
@@ -114,12 +126,42 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
+        //Обработчики нажатий на кнопки
+        mButtonOpenCamera1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (myCameras[CAMERA2].isOpen()) myCameras[CAMERA2].closeCamera();
+                if (myCameras[CAMERA1] != null) {
+                    if (!myCameras[CAMERA1].isOpen()) myCameras[CAMERA1].openCamera();
+                }
+            }
+        });
+        mButtonOpenCamera2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (myCameras[CAMERA1].isOpen()) myCameras[CAMERA1].closeCamera();
+                if (myCameras[CAMERA2] != null) {
+                    if (!myCameras[CAMERA2].isOpen()) myCameras[CAMERA2].openCamera();
+                }
+            }
+        });
+
+        mButtonToMakeShot.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+
+                // тут пока пусто
+
+            }
+        });
     }
 
     public class CameraService {
         private String mCameraID;
         private CameraDevice mCameraDevice = null;
         private CameraCaptureSession mCaptureSession;
+
 
         public CameraService(CameraManager cameraManager, String cameraID) {
 
