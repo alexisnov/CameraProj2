@@ -17,16 +17,27 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.Image;
+import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
@@ -43,6 +54,9 @@ public class MainActivity extends AppCompatActivity {
     private Button mButtonOpenCamera2 = null;
     private Button mButtonToMakeShot = null;
     private TextureView mImageView = null;
+    private File mFile;
+    private HandlerThread mBackgroundThread;
+    private Handler mBackgroundHandler = null;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -150,18 +164,47 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v)
             {
-
-                // тут пока пусто
+                if (myCameras[CAMERA1].isOpen()) myCameras[CAMERA1].makePhoto();
+                if (myCameras[CAMERA2].isOpen()) myCameras[CAMERA2].makePhoto();
 
             }
         });
+    }
+
+    private void startBackgroundThread() {
+        mBackgroundThread = new HandlerThread("CameraBackground");
+        mBackgroundThread.start();
+        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
+    }
+
+    private void stopBackgroundThread() {
+        mBackgroundThread.quitSafely();
+        try {
+            mBackgroundThread.join();
+            mBackgroundThread = null;
+            mBackgroundHandler = null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        stopBackgroundThread();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        startBackgroundThread();
     }
 
     public class CameraService {
         private String mCameraID;
         private CameraDevice mCameraDevice = null;
         private CameraCaptureSession mCaptureSession;
-
+        private ImageReader mImageReader;
 
         public CameraService(CameraManager cameraManager, String cameraID) {
 
@@ -222,7 +265,8 @@ public class MainActivity extends AppCompatActivity {
         };
 
         private void createCameraPreviewSession() {
-
+            mImageReader = ImageReader.newInstance(1920,1080,ImageFormat.JPEG,1);
+            mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, null);
             SurfaceTexture texture = mImageView.getSurfaceTexture();
             // texture.setDefaultBufferSize(1920,1080);
             Surface surface = new Surface(texture);
@@ -232,7 +276,7 @@ public class MainActivity extends AppCompatActivity {
                         mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
 
                 builder.addTarget(surface);
-                mCameraDevice.createCaptureSession(Arrays.asList(surface),
+                mCameraDevice.createCaptureSession(Arrays.asList(surface,mImageReader.getSurface()),
                         new CameraCaptureSession.StateCallback() {
 
                             @Override
@@ -251,6 +295,78 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
+
+        public void makePhoto (){
+            try {
+                String str = String.format("%d.jpg",System.currentTimeMillis()/1000);
+                mFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), str);
+                // This is the CaptureRequest.Builder that we use to take a picture.
+                final CaptureRequest.Builder captureBuilder =
+                        mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+                captureBuilder.addTarget(mImageReader.getSurface());
+                CameraCaptureSession.CaptureCallback CaptureCallback = new CameraCaptureSession.CaptureCallback() {
+
+                    @Override
+                    public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                                   @NonNull CaptureRequest request,
+                                                   @NonNull TotalCaptureResult result) {
+                    }
+                };
+
+                mCaptureSession.stopRepeating();
+                mCaptureSession.abortCaptures();
+                mCaptureSession.capture(captureBuilder.build(), CaptureCallback, null);
+            }
+            catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
+                = new ImageReader.OnImageAvailableListener() {
+
+            @Override
+            public void onImageAvailable(ImageReader reader) {
+                Toast.makeText(MainActivity.this,"фотка доступна для сохранения", Toast.LENGTH_SHORT).show();
+
+                mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
+
+            }
+        };
     }
+
+    private static class ImageSaver implements Runnable {
+
+        private final File mFile;
+        private final Image mImage;
+        ImageSaver(Image image, File file) {
+            mImage = image;
+            mFile = file;
+        }
+
+        @Override
+        public void run() {
+            ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
+            byte[] bytes = new byte[buffer.remaining()];
+            buffer.get(bytes);
+            FileOutputStream output = null;
+            try {
+                output = new FileOutputStream(mFile);
+                output.write(bytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                mImage.close();
+                if (null != output) {
+                    try {
+                        output.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
 }
 
