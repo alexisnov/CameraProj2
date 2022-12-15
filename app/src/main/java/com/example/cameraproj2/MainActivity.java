@@ -302,7 +302,7 @@ public class MainActivity extends AppCompatActivity {
         public void makePhoto (){
             try {
                 String str = String.format("%d.jpg",System.currentTimeMillis()/1000);
-                mFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)+"/Camera2Plus", str);
+                mFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), str);
                 // This is the CaptureRequest.Builder that we use to take a picture.
                 final CaptureRequest.Builder captureBuilder =
                         mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
