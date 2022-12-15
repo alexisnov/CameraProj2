@@ -48,8 +48,8 @@ public class MainActivity extends AppCompatActivity {
 
     CameraService[] myCameras = null;
 
-    private final int CAMERA1   = 0;
-    private final int CAMERA2   = 1;
+    private final int CAMERA1   = 1;
+    private final int CAMERA2   = 0;
     private Button mButtonOpenCamera1 = null;
     private Button mButtonOpenCamera2 = null;
     private Button mButtonToMakeShot = null;
@@ -117,6 +117,9 @@ public class MainActivity extends AppCompatActivity {
         )
         {
             requestPermissions(new String[]{Manifest.permission.CAMERA,Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
         }
 
         //Заполняем массив объектов myCameras
@@ -299,7 +302,7 @@ public class MainActivity extends AppCompatActivity {
         public void makePhoto (){
             try {
                 String str = String.format("%d.jpg",System.currentTimeMillis()/1000);
-                mFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), str);
+                mFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)+"/Camera2Plus", str);
                 // This is the CaptureRequest.Builder that we use to take a picture.
                 final CaptureRequest.Builder captureBuilder =
                         mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -329,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
             public void onImageAvailable(ImageReader reader) {
                 Toast.makeText(MainActivity.this,"фотка доступна для сохранения", Toast.LENGTH_SHORT).show();
 
-                mBackgroundHandler.post(new ImageSaver(reader.acquireLatestImage(), mFile));
+                mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
 
             }
         };
