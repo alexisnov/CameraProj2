@@ -329,7 +329,7 @@ public class MainActivity extends AppCompatActivity {
             public void onImageAvailable(ImageReader reader) {
                 Toast.makeText(MainActivity.this,"фотка доступна для сохранения", Toast.LENGTH_SHORT).show();
 
-                mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
+                mBackgroundHandler.post(new ImageSaver(reader.acquireLatestImage(), mFile));
 
             }
         };
@@ -353,9 +353,12 @@ public class MainActivity extends AppCompatActivity {
             try {
                 output = new FileOutputStream(mFile);
                 output.write(bytes);
+                Log.i(LOG_TAG, "image saved ");
             } catch (IOException e) {
+                Log.i(LOG_TAG, "image is not saved ");
                 e.printStackTrace();
             } finally {
+                Log.i(LOG_TAG, "image is not saved ");
                 mImage.close();
                 if (null != output) {
                     try {
